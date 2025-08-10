@@ -33,7 +33,7 @@ from emby_client.rest import ApiException
 # Login & Logout Functions 
 #-------------------------
 
-def authenticate_with_emby(server_url: str, username: str, password: str, client_name: str = "EmbyPythonClient", client_version: str ="1.0", device_name: str ="EmbyPythonDevice") ->dict:
+def authenticate_with_emby(server_url: str, username: str, password: str, client_name: str = "EmbyPythonClient", client_version: str ="1.0", device_name: str ="EmbyPythonDevice", verify_ssl: Optional[bool] = True) ->dict:
     """
     Login to the Emby server using an username and password for an existing user on that server.
     
@@ -43,6 +43,7 @@ def authenticate_with_emby(server_url: str, username: str, password: str, client
         password (str): password for authentication
         client_name (str): Name of your client application (shown in Emby server logs & devices page)
         client_version (str): Version of your client application (shown in Emby server logs)
+        verify_ssl (bool, optional): Whether to verify SSL certificates. Defaults to True.
         
     Returns:
         dict: A dictionary with keys:
@@ -59,6 +60,9 @@ def authenticate_with_emby(server_url: str, username: str, password: str, client
     # Configure the API client
     config = emby_client.Configuration()
     config.host = server_url
+    if verify_ssl is None:
+        verify_ssl = True
+    config.verify_ssl = verify_ssl
     
     # Create API client and user service
     e_api_client = emby_client.ApiClient(configuration=config)

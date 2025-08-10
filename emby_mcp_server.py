@@ -120,6 +120,7 @@ async def app_lifespan(server: FastMCP) ->AsyncIterator[dict]:
         server_url = os.getenv("EMBY_SERVER_URL")
         username = os.getenv("EMBY_USERNAME")
         password = os.getenv("EMBY_PASSWORD")
+        verify_ssl = str_to_bool(os.getenv("EMBY_VERIFY_SSL", "True"))
         max_chunk_size = os.getenv("LLM_MAX_ITEMS")
         if server_url == None or username == None or password == None:
             print("Fatal error, missing required variables. Ensure the .env file contains EMBY_SERVER_URL, EMBY_USERNAME, EMBY_PASSWORD", file=sys.stderr)
@@ -131,7 +132,7 @@ async def app_lifespan(server: FastMCP) ->AsyncIterator[dict]:
     # Login to Emby server
     device_name = MY_HOSTNAME + " (" + MY_PLATFORM + ")"  # shown in Emby server logs & devices page
     client_name = f"{MY_NAME} for AI"  # shown in Emby server logs & devices page
-    auth_context = authenticate_with_emby(server_url, username, password, client_name, MY_VERSION, device_name)
+    auth_context = authenticate_with_emby(server_url, username, password, client_name, MY_VERSION, device_name, verify_ssl)
     if auth_context['success']:
         # Store the authenticated API client and other default context data
         e_api_client = auth_context['api_client']
@@ -158,6 +159,18 @@ async def app_lifespan(server: FastMCP) ->AsyncIterator[dict]:
 
 # Pass lifespan to server
 mcp = FastMCP(name=MY_NAME, lifespan=app_lifespan)
+
+def str_to_bool(s: str) -> bool:
+    """
+    Casts a string to a boolean value.
+
+    Args:
+        String s: The string to convert to a boolean.
+    
+    Returns:
+        Bool: True if the string is one of "true", "1", "yes", "y", or "on" (case-insensitive), otherwise False.
+    """
+    return str(s).strip().lower() in ("true", "1", "yes", "y", "on")
 
 #--------------------------------------------------
 # Userlist Tools
@@ -1098,6 +1111,7 @@ if __name__ == "__main__":
             server_url = os.getenv("EMBY_SERVER_URL")
             username = os.getenv("EMBY_USERNAME")
             password = os.getenv("EMBY_PASSWORD")
+            verify_ssl = str_to_bool(os.getenv("EMBY_VERIFY_SSL", "True"))
             max_chunk_size = os.getenv("LLM_MAX_ITEMS")
             if server_url == None or username == None or password == None:
                 print("Fatal error, missing required variables. Ensure the .env file contains EMBY_SERVER_URL, EMBY_USERNAME, EMBY_PASSWORD", file=sys.stderr)
@@ -1109,7 +1123,7 @@ if __name__ == "__main__":
         # Login to Emby server
         device_name = MY_HOSTNAME + " (" + MY_PLATFORM + ")"  # shown in Emby server logs & devices page
         client_name = f"{MY_NAME}"  # shown in Emby server logs & devices page
-        result = authenticate_with_emby(server_url, username, password, client_name, MY_VERSION, device_name)
+        result = authenticate_with_emby(server_url, username, password, client_name, MY_VERSION, device_name, verify_ssl)
         if result['success']:
             e_api_client = result['api_client']
             print(f"Logon to media server was successful.", file=sys.stderr)
