@@ -120,6 +120,29 @@ Running Emby.MCP in standalone mode, press CTRL-C to exit.
 ```
 * If this is successful, press Control-C or close the Powershell terminal to exit the script.
 
+### Transport Options
+Emby.MCP supports two transport methods:
+
+**STDIO Transport (Default):**
+* Used for local command-line tools and MCP clients that communicate via standard input/output
+* Default transport method - no configuration needed
+* Run with: `uv run emby_mcp_server.py` or `uv run emby_mcp_server.py --transport stdio`
+
+**HTTP Transport:**
+* Used for web-based deployments and remote access
+* Allows clients to connect over HTTP/SSE
+* Run with: `uv run emby_mcp_server.py --transport http [options]`
+* Options:
+  * `--host HOST` - Host address (default: 127.0.0.1)
+  * `--port PORT` - Port number (default: 8000)
+  * `--path PATH` - Endpoint path (default: /mcp)
+* Example: `uv run emby_mcp_server.py --transport http --host 0.0.0.0 --port 8080 --path /emby-mcp`
+* Environment variables can also be used:
+  * `MCP_TRANSPORT=http` - Set transport to HTTP
+  * `MCP_HTTP_HOST=127.0.0.1` - Set HTTP host
+  * `MCP_HTTP_PORT=8000` - Set HTTP port
+  * `MCP_HTTP_PATH=/mcp` - Set HTTP path
+
 ### Configure Your LLM MCP Client
 * Add the Emby.MCP integration to the MCP SDK by running the following from a Powershell terminal:
 ```

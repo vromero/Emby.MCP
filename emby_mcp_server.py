@@ -43,6 +43,7 @@ import os
 import io
 import sys
 import uuid
+import argparse
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 from mcp.server.fastmcp import FastMCP, Context
@@ -73,8 +74,30 @@ sys.stderr = io.TextIOWrapper(sys.stderr.buffer, line_buffering=True, encoding='
 mcp_context = {}
 mcp_context['search_item_chunking'] = {}
 
-# Create the MCP server
-mcp = FastMCP(name=MY_NAME, instructions=MY_PURPOSE)
+# Parse command-line arguments early to determine transport configuration
+parser = argparse.ArgumentParser(description='Emby.MCP Server', add_help=False)
+parser.add_argument('--transport', type=str, default=None,
+                   choices=['stdio', 'streamable-http'],
+                   help='Transport method: stdio (default) or http')
+parser.add_argument('--host', type=str, default=None,
+                   help='Host address for HTTP transport (default: 127.0.0.1)')
+parser.add_argument('--port', type=int, default=None,
+                   help='Port number for HTTP transport (default: 8000)')
+parser.add_argument('--path', type=str, default=None,
+                   help='Path for HTTP transport endpoint (default: /mcp)')
+
+# Parse known args to get transport info early (don't error on unknown args)
+args, _ = parser.parse_known_args()
+
+# Determine transport method from args or environment variables
+transport = args.transport or os.getenv('MCP_TRANSPORT', 'stdio')
+
+# Store transport config for later use (mcp will be created after lifespan is defined)
+_http_host = None
+_http_port = None
+if transport == 'http':
+    _http_host = args.host or os.getenv('MCP_HTTP_HOST', '127.0.0.1')
+    _http_port = args.port or int(os.getenv('MCP_HTTP_PORT', '8000'))
 
 #==================================================
 # Functions for Interacting with MCP Clients
@@ -157,8 +180,13 @@ async def app_lifespan(server: FastMCP) ->AsyncIterator[dict]:
         else:
             print(f"ERROR: logout from media server failed: {logout_result['error']}", file=sys.stderr)
 
-# Pass lifespan to server
-mcp = FastMCP(name=MY_NAME, lifespan=app_lifespan)
+# Create the MCP server with HTTP configuration if needed
+# Pass lifespan to server and configure transport
+if transport == 'http' and _http_host and _http_port:
+    mcp = FastMCP(name=MY_NAME, instructions=MY_PURPOSE, lifespan=app_lifespan, host=_http_host, port=_http_port)
+else:
+    # STDIO transport (default)
+    mcp = FastMCP(name=MY_NAME, instructions=MY_PURPOSE, lifespan=app_lifespan)
 
 def str_to_bool(s: str) -> bool:
     """
@@ -1149,7 +1177,22 @@ if __name__ == "__main__":
             sys.exit(2)
 
         print(f"Startup checks have completed.\n", file=sys.stderr)
-        print(f"Running Emby.MCP in standalone mode, press CTRL-C to exit.\n", file=sys.stderr)
-        mcp.run(transport='stdio')
+        
+        # Transport was already determined earlier, use it now
+        if transport == 'streamable-http':
+            # HTTP transport configuration
+            host = args.host or os.getenv('MCP_HTTP_HOST', '127.0.0.1')
+            port = args.port or int(os.getenv('MCP_HTTP_PORT', '8000'))
+            path = args.path or os.getenv('MCP_HTTP_PATH', '/mcp')
+            
+            print(f"Running Emby.MCP with HTTP transport on http://{host}:{port}{path}", file=sys.stderr)
+            print("Press CTRL-C to exit.\n", file=sys.stderr)
+            # FastMCP uses 'streamable-http' as transport name for HTTP/SSE transport
+            mcp.run(transport='streamable-http')
+        else:
+            # STDIO transport (default)
+            print(f"Running Emby.MCP with STDIO transport", file=sys.stderr)
+            print("Press CTRL-C to exit.\n", file=sys.stderr)
+            mcp.run(transport='stdio')
 
 #--------------------------------------------------
